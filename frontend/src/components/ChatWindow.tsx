@@ -17,6 +17,42 @@ import { theme } from '@/lib/theme';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const ROTATION_LIMIT = 30;
 
+const playSound = (type: 'send' | 'receive') => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    
+    const ctx = new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    if (type === 'send') {
+      // Quick ascending bloop
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.1);
+    } else {
+      // Soft ding
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.2);
+      gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.2);
+    }
+  } catch (e) {
+    // Ignore audio errors
+  }
+};
+
 export default function ChatWindow({ conversationId }: { conversationId: string }) {
   const { user, getPrivateKey } = useAuth();
   const { socket, isConnected } = useSocket();
@@ -224,6 +260,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
     setMessages((prev) => [...prev, processed]);
 
     if (msg.senderId !== user?.id && socket) {
+      playSound('receive');
       socket.emit('message_delivered', { conversationId, messageIds: [msg.id] });
       if (document.hasFocus()) {
         socket.emit('message_read', { conversationId, messageIds: [msg.id] });
@@ -297,6 +334,8 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
         nonce,
         keyVersion: activeKeyVersion,
       });
+      
+      playSound('send');
     } catch (error: any) {
       console.warn('Failed to encrypt/send:', error.message || error);
     }
