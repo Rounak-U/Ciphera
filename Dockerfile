@@ -21,7 +21,7 @@ COPY . .
 
 # Generate Prisma Client
 WORKDIR /app/backend
-RUN npx prisma generate --schema=../prisma/schema.prisma
+RUN pnpm exec prisma generate --schema=../prisma/schema.prisma
 
 # Build shared packages
 WORKDIR /app/packages/crypto
@@ -33,7 +33,7 @@ RUN pnpm run build
 
 # Build server
 WORKDIR /app/backend
-RUN npx tsc
+RUN pnpm exec tsc
 
 EXPOSE 4000
 CMD ["pnpm", "start"]
