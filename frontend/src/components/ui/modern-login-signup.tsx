@@ -46,6 +46,7 @@ export const authSubmitStyle: React.CSSProperties = {
   fontWeight: 500,
   fontSize: '0.875rem',
   cursor: 'pointer',
+  transition: 'background 0.2s ease',
 };
 
 export const authErrorStyle: React.CSSProperties = {
@@ -92,11 +93,11 @@ function DotCanvasBackground() {
         u_colors: {
           value: [
             new THREE.Vector3(1, 1, 1),
+            new THREE.Vector3(0.5, 1.0, 0.5), // light green
+            new THREE.Vector3(0.1, 0.8, 0.4), // vibrant green
+            new THREE.Vector3(0.2, 0.5, 0.3), // subtle dark green
             new THREE.Vector3(1, 1, 1),
-            new THREE.Vector3(1, 1, 1),
-            new THREE.Vector3(1, 1, 1),
-            new THREE.Vector3(1, 1, 1),
-            new THREE.Vector3(1, 1, 1),
+            new THREE.Vector3(0.6, 1.0, 0.6), // very light green
           ],
         },
         u_total_size: { value: 20.0 },
@@ -259,7 +260,7 @@ export function ModernAuthLayout({ mode, children }: ModernAuthLayoutProps) {
           inset: 0,
           zIndex: 1,
           background:
-            'radial-gradient(circle at center,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0) 100%)',
+            'radial-gradient(circle at center,rgba(16,185,129,0.1) 0%,rgba(0,0,0,0) 100%)',
           pointerEvents: 'none',
         }}
       />
