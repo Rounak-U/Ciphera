@@ -57,20 +57,26 @@ export const setupSocketHandlers = (io: Server) => {
       try {
         const { conversationId, ciphertext, nonce, authTag, keyVersion } = data;
         
-        // Save to DB
-        const message = await prisma.message.create({
-          data: {
-            conversationId,
-            senderId: userId,
-            ciphertext,
-            nonce,
-            authTag: authTag || "",
-            keyVersion
-          },
-          include: {
-            sender: { select: { id: true, username: true } }
-          }
-        });
+        // Save to DB and bump conversation updatedAt
+        const [message] = await prisma.$transaction([
+          prisma.message.create({
+            data: {
+              conversationId,
+              senderId: userId,
+              ciphertext,
+              nonce,
+              authTag: authTag || "",
+              keyVersion
+            },
+            include: {
+              sender: { select: { id: true, username: true } }
+            }
+          }),
+          prisma.conversation.update({
+            where: { id: conversationId },
+            data: { updatedAt: new Date() }
+          })
+        ]);
 
         // Broadcast to conversation
         io.to(`conversation:${conversationId}`).emit('receive_message', message);

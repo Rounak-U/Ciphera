@@ -37,6 +37,7 @@ export default function Sidebar({
   useEffect(() => {
     if (socket) {
       const handleNewMessage = () => {
+        console.log('🔔 Sidebar received real-time socket ping! Fetching latest conversations...');
         fetchConversations();
       };
       
