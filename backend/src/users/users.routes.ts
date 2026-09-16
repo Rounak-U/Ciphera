@@ -1,12 +1,11 @@
 import { Router } from 'express';
-import { searchUsers, getPublicKey } from './users.controller';
+import { searchUsers, getPublicKey, deleteAccount } from './users.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
-const router: Router = Router();
+const router = Router();
 
-router.use(authenticate);
-
-router.get('/', searchUsers);
-router.get('/:id/public-key', getPublicKey);
+router.get('/', authenticate, searchUsers);
+router.get('/:id/public-key', authenticate, getPublicKey);
+router.delete('/me', authenticate, deleteAccount);
 
 export default router;

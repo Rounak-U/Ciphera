@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert } from 'lucide-react';
+import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { generateSessionKey, encryptSessionKey, importPublicKey } from '@securechat/crypto';
 import { useRouter } from 'next/navigation';
@@ -21,7 +21,7 @@ export default function Sidebar({
   onSelectConversation: (id: string) => void;
   activeConversationId: string | null;
 }) {
-  const { user, logout, getPrivateKey } = useAuth();
+  const { user, logout, deleteAccount, getPrivateKey } = useAuth();
   const [conversations, setConversations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -91,6 +91,18 @@ export default function Sidebar({
   const handleLogout = async () => {
     await logout();
     router.push('/login');
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm("Are you sure you want to permanently delete your account? This will wipe all your conversations and session keys, and cannot be undone.");
+    if (!confirmed) return;
+    
+    try {
+      await deleteAccount();
+      router.push('/login');
+    } catch (error) {
+      alert("Failed to delete account. Please try again.");
+    }
   };
 
   return (
@@ -268,7 +280,13 @@ export default function Sidebar({
               {user?.email}
             </p>
           </div>
-          <Shield className="size-4 shrink-0" style={{ color: theme.accentMuted }} />
+          <button 
+            onClick={handleDeleteAccount}
+            className="rounded-lg p-1.5 transition-colors text-red-500 hover:bg-red-500/10"
+            title="Delete Account"
+          >
+            <Trash2 size={16} strokeWidth={1.5} />
+          </button>
         </div>
       </div>
     </div>

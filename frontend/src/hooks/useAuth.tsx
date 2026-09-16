@@ -14,9 +14,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  checkAuth: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   getPrivateKey: () => Promise<CryptoKey | null>;
 }
 
@@ -116,18 +118,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await axios.post(`${API_URL}/auth/logout`);
+    try {
+      await axios.post(`${API_URL}/auth/logout`);
+    } catch (e) {
+      console.warn('Logout request failed', e);
+    }
+    
+    // Clear the private key securely from this browser session
+    if (user?.id) {
+      localStorage.removeItem(`securechat_private_key_${user.id}`);
+    }
+    
     setUser(null);
     setPrivateKey(null);
-    // Deliberately NOT removing from localStorage so users don't permanently lose their keys when logging out.
   };
 
-  const getPrivateKey = async () => {
+  const deleteAccount = async () => {
+    try {
+      if (user?.id) {
+        localStorage.removeItem(`securechat_private_key_${user.id}`);
+      }
+      await axios.delete(`${API_URL}/users/me`);
+      setUser(null);
+      setPrivateKey(null);
+    } catch (e) {
+      console.error('Failed to delete account', e);
+      throw e;
+    }
+  };
+
+  const getPrivateKey = async (): Promise<CryptoKey | null> => {
     return privateKey;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, getPrivateKey }}>
+    <AuthContext.Provider value={{ user, loading, checkAuth, login, register, logout, deleteAccount, getPrivateKey }}>
       {children}
     </AuthContext.Provider>
   );
