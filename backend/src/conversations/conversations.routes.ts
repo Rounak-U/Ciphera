@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createConversation, getConversations, getConversation, getMessages } from './conversations.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 
 router.use(authenticate);
 
