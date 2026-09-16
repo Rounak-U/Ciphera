@@ -169,3 +169,22 @@ export const me = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const getSocketToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const token = req.cookies?.token;
+    if (!token) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    
+    // Generate a short-lived token specifically for Socket.IO authentication
+    const socketToken = jwt.sign({ userId: decoded.userId }, JWT_SECRET, { expiresIn: '1m' });
+    
+    res.json({ socketToken });
+  } catch (error) {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+};

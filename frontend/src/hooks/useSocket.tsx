@@ -27,23 +27,42 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    const newSocket = io(API_URL.replace('/api', ''), {
-      withCredentials: true,
-      reconnectionAttempts: 5,
-    });
+    let active = true;
+    let currentSocket: Socket | null = null;
 
-    newSocket.on('connect', () => {
-      setIsConnected(true);
-    });
+    const connectSocket = async () => {
+      try {
+        const res = await fetch(`${API_URL}/auth/socket-token`, { 
+          method: 'GET',
+          credentials: 'include' 
+        });
+        
+        if (!res.ok) throw new Error('Failed to get socket token');
+        
+        const data = await res.json();
+        if (!active) return;
 
-    newSocket.on('disconnect', () => {
-      setIsConnected(false);
-    });
+        currentSocket = io(API_URL.replace('/api', ''), {
+          auth: { token: data.socketToken },
+          withCredentials: true,
+          reconnectionAttempts: 5,
+        });
 
-    setSocket(newSocket);
+        currentSocket.on('connect', () => setIsConnected(true));
+        currentSocket.on('disconnect', () => setIsConnected(false));
+        
+        setSocket(currentSocket);
+      } catch (err) {
+        console.error('Socket connection failed:', err);
+      }
+    };
+
+    connectSocket();
 
     return () => {
-      newSocket.disconnect();
+      active = false;
+      if (currentSocket) currentSocket.disconnect();
+      if (socket) socket.disconnect();
     };
   }, [user]);
 

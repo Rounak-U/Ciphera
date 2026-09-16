@@ -11,17 +11,27 @@ interface SocketWithUser extends Socket {
 export const setupSocketHandlers = (io: Server) => {
   io.use((socket: SocketWithUser, next) => {
     try {
-      const cookieHeader = socket.request.headers.cookie;
-      if (!cookieHeader) throw new Error('No cookies');
+      // 1. Try explicit auth token from client (bypasses cross-origin cookie issues on WSS)
+      let token = socket.handshake.auth?.token;
+
+      // 2. Fallback to HttpOnly cookie
+      if (!token) {
+        const cookieHeader = socket.request.headers.cookie;
+        if (cookieHeader) {
+          const tokenMatch = cookieHeader.match(/token=([^;]+)/);
+          if (tokenMatch) {
+            token = tokenMatch[1];
+          }
+        }
+      }
+
+      if (!token) throw new Error('No authentication token found');
       
-      const tokenMatch = cookieHeader.match(/token=([^;]+)/);
-      if (!tokenMatch) throw new Error('No token found');
-      
-      const token = tokenMatch[1];
       const decoded = jwt.verify(token as string, JWT_SECRET as string) as unknown as { userId: string };
       socket.userId = decoded.userId;
       next();
     } catch (err) {
+      console.error('Socket authentication failed:', err);
       next(new Error('Authentication Error'));
     }
   });
