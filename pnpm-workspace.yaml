@@ -12,3 +12,4 @@ allowBuilds:
   unrs-resolver: set this to true or false
 minimumReleaseAgeExclude:
   - '@types/node@22.20.3'
+  - framer-motion@13.4.0
