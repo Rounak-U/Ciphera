@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Lock, MessageSquare } from 'lucide-react';
 import { theme } from '@/lib/theme';
+import PixelBlast from '@/components/ui/PixelBlast';
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -49,42 +50,67 @@ export default function Dashboard() {
         <ChatWindow conversationId={activeConversationId} />
       ) : (
         <div
-          className="flex flex-1 flex-col items-center justify-center border-l px-6"
+          className="relative flex flex-1 flex-col items-center justify-center overflow-hidden border-l px-6"
           style={{
             background: theme.bg,
             borderColor: theme.borderMuted,
           }}
         >
-          <div
-            className="mb-6 flex size-20 items-center justify-center rounded-2xl border"
-            style={{
-              background: theme.accentSoft,
-              borderColor: theme.border,
-            }}
-          >
-            <MessageSquare className="size-9" style={{ color: theme.accent }} strokeWidth={1.5} />
+          {/* PixelBlast Background */}
+          <div className="absolute inset-0 z-0 overflow-hidden blur-[1px] opacity-90">
+            <PixelBlast
+              variant="square"
+              pixelSize={4}
+              color="#4ade80"
+              patternScale={2}
+              patternDensity={1}
+              pixelSizeJitter={0}
+              enableRipples={true}
+              rippleSpeed={0.4}
+              rippleThickness={0.12}
+              rippleIntensityScale={1.5}
+              liquid={false}
+              liquidStrength={0.12}
+              liquidRadius={1.2}
+              liquidWobbleSpeed={5}
+              speed={0.5}
+              edgeFade={0.25}
+              transparent={true}
+            />
           </div>
-          <h2 className="text-xl font-semibold tracking-tight" style={{ color: theme.text }}>
-            Secure End-to-End Encrypted Chat
-          </h2>
-          <p
-            className="mt-2 max-w-md text-center text-sm leading-relaxed"
-            style={{ color: theme.textDim }}
-          >
-            Select a conversation from the sidebar or search for a user to start a secure chat
-            session. Messages are protected using hybrid cryptography (RSA-OAEP + AES-256-GCM) with
-            automatic key rotation.
-          </p>
-          <div
-            className="mt-6 flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium"
-            style={{
-              background: theme.accentSoft,
-              borderColor: theme.border,
-              color: theme.accentMuted,
-            }}
-          >
-            <Lock className="size-3.5" />
-            E2E Encrypted · Zero plaintext on server
+
+          <div className="z-10 flex flex-col items-center">
+            <div
+              className="mb-6 flex size-20 items-center justify-center rounded-2xl border shadow-[0_0_30px_-5px_rgba(74,222,128,0.2)] backdrop-blur-md"
+              style={{
+                background: 'rgba(74, 222, 128, 0.05)',
+                borderColor: theme.border,
+              }}
+            >
+              <MessageSquare className="size-9" style={{ color: theme.accent }} strokeWidth={1.5} />
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight" style={{ color: theme.text, textShadow: '0 2px 10px rgba(0,0,0,0.8)' }}>
+              Secure End-to-End Encrypted Chat
+            </h2>
+            <p
+              className="mt-2 max-w-md text-center text-sm leading-relaxed"
+              style={{ color: theme.textDim, textShadow: '0 1px 5px rgba(0,0,0,0.8)' }}
+            >
+              Select a conversation from the sidebar or search for a user to start a secure chat
+              session. Messages are protected using hybrid cryptography (RSA-OAEP + AES-256-GCM) with
+              automatic key rotation.
+            </p>
+            <div
+              className="mt-8 flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium shadow-[0_0_20px_-5px_rgba(74,222,128,0.15)] backdrop-blur-md"
+              style={{
+                background: 'rgba(74, 222, 128, 0.05)',
+                borderColor: theme.border,
+                color: theme.accentMuted,
+              }}
+            >
+              <Lock className="size-3.5" />
+              E2E Encrypted · Zero plaintext on server
+            </div>
           </div>
         </div>
       )}
