@@ -70,7 +70,17 @@ export const getConversations = async (req: Request, res: Response): Promise<voi
       include: {
         members: { include: { user: { select: { id: true, username: true } } } },
         messages: { orderBy: { createdAt: 'desc' }, take: 1 },
-        sessionKeys: { orderBy: { keyVersion: 'desc' }, take: 1 }
+        sessionKeys: { orderBy: { keyVersion: 'desc' }, take: 1 },
+        _count: {
+          select: {
+            messages: {
+              where: {
+                senderId: { not: userId },
+                readAt: null
+              }
+            }
+          }
+        }
       },
       orderBy: { updatedAt: 'desc' }
     });

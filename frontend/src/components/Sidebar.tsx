@@ -105,6 +105,15 @@ export default function Sidebar({
     }
   };
 
+  const handleSelectConversation = (id: string) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, _count: { ...c._count, messages: 0 } } : c
+      )
+    );
+    onSelectConversation(id);
+  };
+
   const handleLogout = async () => {
     await logout();
     router.push('/login');
@@ -246,10 +255,12 @@ export default function Sidebar({
                 if (!otherMember) return null;
 
                 const isActive = activeConversationId === conv.id;
+                const unreadCount = conv._count?.messages || 0;
+
                 return (
                   <div
                     key={conv.id}
-                    onClick={() => onSelectConversation(conv.id)}
+                    onClick={() => handleSelectConversation(conv.id)}
                     className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                     style={{
                       background: isActive ? theme.accentSoft : 'transparent',
@@ -279,6 +290,14 @@ export default function Sidebar({
                           : 'No messages yet'}
                       </p>
                     </div>
+                    {!isActive && unreadCount > 0 && (
+                      <div 
+                        className="flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-black"
+                        style={{ background: theme.accent }}
+                      >
+                        {unreadCount}
+                      </div>
+                    )}
                   </div>
                 );
               });
