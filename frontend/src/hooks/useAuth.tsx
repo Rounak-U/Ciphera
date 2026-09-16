@@ -40,6 +40,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const res = await axios.get(`${API_URL}/auth/me`);
       const userObj = res.data.user;
+      
+      if (!userObj) {
+        setUser(null);
+        setPrivateKey(null);
+        return;
+      }
+      
       setUser(userObj);
       
       const storedKey = localStorage.getItem(`securechat_private_key_${userObj.id}`);

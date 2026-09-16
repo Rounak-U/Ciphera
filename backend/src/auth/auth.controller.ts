@@ -44,7 +44,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
 
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
     res.cookie('token', token, {
       httpOnly: true,
       secure: isProduction,
@@ -103,7 +103,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
 
-    const isProduction = process.env.NODE_ENV === 'production';
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
     res.cookie('token', token, {
       httpOnly: true,
       secure: isProduction,
