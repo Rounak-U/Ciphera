@@ -199,52 +199,61 @@ export default function Sidebar({
             >
               Recent Chats
             </h3>
-            {conversations.length === 0 && (
-              <p className="px-2 py-4 text-center text-sm" style={{ color: theme.textDim }}>
-                No conversations yet. Search for a user to start chatting.
-              </p>
-            )}
-            {conversations.map((conv) => {
-              const otherMember = conv.members.find((m: any) => m.userId !== user?.id)?.user;
-              if (!otherMember) return null;
-
-              const isActive = activeConversationId === conv.id;
-              return (
-                <div
-                  key={conv.id}
-                  onClick={() => onSelectConversation(conv.id)}
-                  className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
-                  style={{
-                    background: isActive ? theme.accentSoft : 'transparent',
-                    border: isActive ? `1px solid ${theme.border}` : '1px solid transparent',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.background = theme.surfaceHover;
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <Avatar
-                    initials={otherMember.username?.[0]?.toUpperCase() || '?'}
-                    active={isActive}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className="truncate text-sm font-medium"
-                      style={{ color: isActive ? theme.accent : theme.text }}
-                    >
-                      {otherMember.username}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs" style={{ color: theme.textDim }}>
-                      {conv.messages && conv.messages[0]
-                        ? 'Encrypted message…'
-                        : 'No messages yet'}
-                    </p>
-                  </div>
-                </div>
+            {(() => {
+              const visibleConvs = conversations.filter(
+                (conv) => activeConversationId === conv.id || (conv.messages && conv.messages.length > 0)
               );
-            })}
+
+              if (visibleConvs.length === 0) {
+                return (
+                  <p className="px-2 py-4 text-center text-sm" style={{ color: theme.textDim }}>
+                    No conversations yet. Search for a user to start chatting.
+                  </p>
+                );
+              }
+
+              return visibleConvs.map((conv) => {
+                const otherMember = conv.members.find((m: any) => m.userId !== user?.id)?.user;
+                if (!otherMember) return null;
+
+                const isActive = activeConversationId === conv.id;
+                return (
+                  <div
+                    key={conv.id}
+                    onClick={() => onSelectConversation(conv.id)}
+                    className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                    style={{
+                      background: isActive ? theme.accentSoft : 'transparent',
+                      border: isActive ? `1px solid ${theme.border}` : '1px solid transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.background = theme.surfaceHover;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <Avatar
+                      initials={otherMember.username?.[0]?.toUpperCase() || '?'}
+                      active={isActive}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-sm font-medium"
+                        style={{ color: isActive ? theme.accent : theme.text }}
+                      >
+                        {otherMember.username}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs" style={{ color: theme.textDim }}>
+                        {conv.messages && conv.messages[0]
+                          ? 'Encrypted message…'
+                          : 'No messages yet'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>
