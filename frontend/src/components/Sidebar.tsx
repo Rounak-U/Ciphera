@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSocket } from '@/hooks/useSocket';
 import { generateSessionKey, encryptSessionKey, importPublicKey } from '@securechat/crypto';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,6 +23,7 @@ export default function Sidebar({
   activeConversationId: string | null;
 }) {
   const { user, logout, deleteAccount, getPrivateKey } = useAuth();
+  const { socket } = useSocket();
   const [conversations, setConversations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -31,6 +33,20 @@ export default function Sidebar({
   useEffect(() => {
     fetchConversations();
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      const handleNewMessage = () => {
+        fetchConversations();
+      };
+      
+      socket.on('receive_message', handleNewMessage);
+      
+      return () => {
+        socket.off('receive_message', handleNewMessage);
+      };
+    }
+  }, [socket]);
 
   const fetchConversations = async () => {
     try {

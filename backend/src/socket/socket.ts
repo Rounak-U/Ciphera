@@ -74,6 +74,20 @@ export const setupSocketHandlers = (io: Server) => {
 
         // Broadcast to conversation
         io.to(`conversation:${conversationId}`).emit('receive_message', message);
+
+        // Notify all members' personal rooms to update sidebars in real-time
+        const conv = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          include: { members: true }
+        });
+
+        if (conv) {
+          conv.members.forEach((m) => {
+            if (m.userId !== userId) {
+              io.to(`user:${m.userId}`).emit('receive_message', message);
+            }
+          });
+        }
       } catch (error) {
         console.error('send_message error', error);
       }

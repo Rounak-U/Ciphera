@@ -257,7 +257,10 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
 
   const processIncomingMessage = async (msg: any) => {
     const processed = await decryptAndFormatMessage(msg);
-    setMessages((prev) => [...prev, processed]);
+    setMessages((prev) => {
+      if (prev.some((m) => m.id === processed.id)) return prev;
+      return [...prev, processed];
+    });
 
     if (msg.senderId !== user?.id && socket) {
       playSound('receive');
