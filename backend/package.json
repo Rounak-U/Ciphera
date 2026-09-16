@@ -13,9 +13,9 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "6",
-    "@securechat/config": "*",
-    "@securechat/crypto": "*",
-    "@securechat/types": "*",
+    "@securechat/config": "workspace:*",
+    "@securechat/crypto": "workspace:*",
+    "@securechat/types": "workspace:*",
     "argon2": "^0.45.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
