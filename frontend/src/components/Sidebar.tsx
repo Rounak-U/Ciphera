@@ -1,0 +1,282 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { generateSessionKey, encryptSessionKey, importPublicKey } from '@securechat/crypto';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { theme } from '@/lib/theme';
+import { Dancing_Script } from 'next/font/google';
+
+const dancingScript = Dancing_Script({ weight: '700', subsets: ['latin'] });
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
+
+export default function Sidebar({
+  onSelectConversation,
+  activeConversationId,
+}: {
+  onSelectConversation: (id: string) => void;
+  activeConversationId: string | null;
+}) {
+  const { user, logout, getPrivateKey } = useAuth();
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/conversations`);
+      setConversations(res.data);
+    } catch (error: any) {
+      console.warn('Failed to fetch conversations:', error.message || error);
+    }
+  };
+
+  const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (q.length > 2) {
+      setIsSearching(true);
+      try {
+        const res = await axios.get(`${API_URL}/users?q=${q}`);
+        setSearchResults(res.data);
+      } catch (error: any) {
+        console.warn('Search failed:', error.message || error);
+      }
+    } else {
+      setIsSearching(false);
+      setSearchResults([]);
+    }
+  };
+
+  const startConversation = async (targetUser: any) => {
+    try {
+      const sessionKey = await generateSessionKey();
+      const targetPublicKey = await importPublicKey(targetUser.publicKey);
+      const encryptedForTarget = await encryptSessionKey(sessionKey, targetPublicKey);
+      const myPublicKey = await importPublicKey(user!.publicKey);
+      const encryptedForSelf = await encryptSessionKey(sessionKey, myPublicKey);
+
+      const initialEncryptedKeyMaterial = {
+        [targetUser.id]: encryptedForTarget,
+        [user!.id]: encryptedForSelf,
+      };
+
+      const res = await axios.post(`${API_URL}/conversations`, {
+        targetUserId: targetUser.id,
+        initialEncryptedKeyMaterial,
+      });
+
+      setSearchQuery('');
+      setIsSearching(false);
+      await fetchConversations();
+      onSelectConversation(res.data.id);
+    } catch (error: any) {
+      console.warn('Failed to start conversation:', error.message || error);
+      alert(
+        'Failed to start conversation due to cryptographic constraints. Did you lose your private key?',
+      );
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
+  return (
+    <div
+      className="flex h-full w-80 flex-col border-r"
+      style={{ background: theme.card, borderColor: theme.borderMuted, color: theme.text }}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-5">
+        <div className="flex items-center gap-2.5">
+          <h2 
+            className={`${dancingScript.className} tracking-tight`}
+            style={{ 
+              color: '#4ade80', 
+              fontSize: '1.75rem',
+              textShadow: '0 0 10px rgba(74, 222, 128, 0.4)',
+              lineHeight: 1,
+            }}
+          >
+            Ciphera
+          </h2>
+        </div>
+        <div className="flex items-center gap-1">
+          <Link
+            href="/security"
+            className="rounded-lg p-2 transition-colors hover:opacity-80"
+            style={{ color: theme.textMuted }}
+            title="Security Lab"
+          >
+            <ShieldAlert size={18} strokeWidth={1.5} />
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="rounded-lg p-2 transition-colors text-red-500 hover:bg-red-500/10 hover:text-red-400"
+            title="Logout"
+          >
+            <LogOut size={18} strokeWidth={1.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-4 pb-4">
+        <div className="relative">
+          <Search
+            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            style={{ color: theme.textDim }}
+            strokeWidth={2}
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={handleSearch}
+            placeholder="Search users…"
+            className="block w-full rounded-lg py-2.5 pr-3 pl-10 text-sm outline-none transition-shadow focus:ring-2"
+            style={{
+              background: theme.surface,
+              border: `1px solid ${theme.border}`,
+              color: theme.text,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-3">
+        {isSearching ? (
+          <div className="py-2">
+            <h3
+              className="mb-2 px-2 text-[11px] font-semibold tracking-wider uppercase"
+              style={{ color: theme.textDim }}
+            >
+              Results
+            </h3>
+            {searchResults.map((u) => (
+              <div
+                key={u.id}
+                onClick={() => startConversation(u)}
+                className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                style={{ background: 'transparent' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = theme.surfaceHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <Avatar initials={u.username?.[0]?.toUpperCase() || '?'} active={false} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{u.username}</p>
+                </div>
+                <Plus size={16} style={{ color: theme.accent }} />
+              </div>
+            ))}
+            {searchResults.length === 0 && (
+              <p className="px-2 text-sm" style={{ color: theme.textDim }}>
+                No users found.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="py-2">
+            <h3
+              className="mb-2 px-2 text-[11px] font-semibold tracking-wider uppercase"
+              style={{ color: theme.textDim }}
+            >
+              Recent Chats
+            </h3>
+            {conversations.length === 0 && (
+              <p className="px-2 py-4 text-center text-sm" style={{ color: theme.textDim }}>
+                No conversations yet. Search for a user to start chatting.
+              </p>
+            )}
+            {conversations.map((conv) => {
+              const otherMember = conv.members.find((m: any) => m.userId !== user?.id)?.user;
+              if (!otherMember) return null;
+
+              const isActive = activeConversationId === conv.id;
+              return (
+                <div
+                  key={conv.id}
+                  onClick={() => onSelectConversation(conv.id)}
+                  className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                  style={{
+                    background: isActive ? theme.accentSoft : 'transparent',
+                    border: isActive ? `1px solid ${theme.border}` : '1px solid transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = theme.surfaceHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <Avatar
+                    initials={otherMember.username?.[0]?.toUpperCase() || '?'}
+                    active={isActive}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="truncate text-sm font-medium"
+                      style={{ color: isActive ? theme.accent : theme.text }}
+                    >
+                      {otherMember.username}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs" style={{ color: theme.textDim }}>
+                      {conv.messages && conv.messages[0]
+                        ? 'Encrypted message…'
+                        : 'No messages yet'}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* User footer */}
+      <div className="border-t p-4" style={{ borderColor: theme.borderMuted, background: theme.surface }}>
+        <div className="flex items-center gap-3">
+          <Avatar initials={user?.username?.[0]?.toUpperCase() || 'U'} active={false} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{user?.username}</p>
+            <p className="truncate text-xs" style={{ color: theme.textDim }}>
+              {user?.email}
+            </p>
+          </div>
+          <Shield className="size-4 shrink-0" style={{ color: theme.accentMuted }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Avatar({ initials, active }: { initials: string; active: boolean }) {
+  return (
+    <div
+      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+      style={{
+        background: active ? theme.accentMuted : theme.surface,
+        color: active ? theme.bg : theme.textMuted,
+        border: `1px solid ${active ? theme.accent : theme.border}`,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}

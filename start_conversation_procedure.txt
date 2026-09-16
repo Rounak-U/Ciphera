@@ -1,0 +1,33 @@
+PROCEDURE TO START A SECURE CONVERSATION
+
+The following outlines the step-by-step procedure the SecureChat application uses to establish an end-to-end encrypted (E2EE) conversation between two users.
+
+1. SEARCH FOR TARGET USER
+   - You type a username into the search bar in the Sidebar.
+   - The frontend sends a search request to the backend (`GET /api/users?q=...`).
+   - The backend returns a list of matching users, which includes their unique User IDs and their RSA Public Keys.
+
+2. GENERATE A SHARED SESSION KEY
+   - Once you click on a user to start chatting, your browser (client-side) immediately generates a brand new, random 256-bit AES-GCM symmetric key. 
+   - This key will be used to quickly encrypt and decrypt the actual text messages in the chat.
+
+3. ENCRYPT THE SESSION KEY FOR THE TARGET USER
+   - The frontend takes the target user's RSA Public Key (which it got from the search results).
+   - It encrypts the AES session key using the target user's Public Key. Only the target user's private key can decrypt this.
+
+4. ENCRYPT THE SESSION KEY FOR YOURSELF
+   - The frontend takes your own RSA Public Key.
+   - It encrypts a copy of the exact same AES session key using your Public Key. This ensures you can also read the chat history later when you reload the page.
+
+5. SEND TO THE BACKEND
+   - The frontend bundles both encrypted copies of the session key into an object called `initialEncryptedKeyMaterial`.
+   - It sends a request to the backend (`POST /api/conversations`) with the target user's ID and this key material.
+
+6. BACKEND STORES THE CONVERSATION
+   - The backend receives the request. It CANNOT read the session key because it was encrypted with RSA, and the backend does not possess any private keys.
+   - The backend creates a new "Conversation" in the database, adds both users as members, and saves the encrypted key material as "Key Version 1".
+
+7. READY TO CHAT
+   - The backend returns the newly created Conversation ID.
+   - The frontend opens the chat window.
+   - Whenever you send a message, it is encrypted with the AES session key, sent to the backend as ciphertext, and broadcasted to the target user.
