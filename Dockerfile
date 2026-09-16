@@ -14,7 +14,7 @@ COPY packages/types/package.json packages/types/
 COPY packages/config/package.json packages/config/
 
 # Install dependencies
-RUN npm install --legacy-peer-deps
+RUN pnpm install
 
 # Copy source code
 COPY . .
@@ -25,15 +25,15 @@ RUN npx prisma generate --schema=../prisma/schema.prisma
 
 # Build shared packages
 WORKDIR /app/packages/crypto
-RUN npm run build
+RUN pnpm run build
 WORKDIR /app/packages/types
-RUN npm run build
+RUN pnpm run build
 WORKDIR /app/packages/config
-RUN npm run build
+RUN pnpm run build
 
 # Build server
 WORKDIR /app/backend
 RUN npx tsc
 
 EXPOSE 4000
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
