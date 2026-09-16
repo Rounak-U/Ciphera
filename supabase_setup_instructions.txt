@@ -1,0 +1,37 @@
+# Next Steps for Supabase Integration
+
+You have successfully added the Supabase connection strings to your `.env` and updated `prisma/schema.prisma` with `directUrl`. 
+
+Here is exactly what you need to do next:
+
+## Step 1: Replace Your Passwords in `.env`
+If you haven't already, open your `.env` file and replace `[YOUR-PASSWORD]` with your actual Supabase database password in both URLs. Do not commit this password to GitHub!
+
+## Step 2: Push the Schema to Supabase
+You need to create the tables in your new Supabase database so the backend can read/write data. Run this command in your terminal:
+```bash
+pnpm dlx prisma db push
+```
+*If that doesn't work, try `npx prisma db push`.*
+Wait for the success message stating that your database is in sync with your Prisma schema.
+
+## Step 3: Deploy the Backend
+Because SecureChat uses Socket.IO for real-time messaging, the backend cannot be hosted on Vercel (which uses serverless functions that terminate). You must host the backend on a service that supports persistent WebSockets, such as **Render**, **Railway**, or **Fly.io**.
+
+1. Create an account on Render (https://render.com/) or Railway (https://railway.app/).
+2. Create a new "Web Service" and connect your GitHub repository.
+3. **Build Command**: `pnpm install && pnpm build` (or similar depending on your root scripts)
+4. **Start Command**: `cd backend && pnpm start`
+5. **Environment Variables**: Add these exact variables to your deployment dashboard:
+   - `DATABASE_URL`: `postgresql://postgres.zmvzayfmsbzqcdgjqwnd:[YOUR-PASSWORD]@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1`
+   - `DIRECT_URL`: `postgresql://postgres:[YOUR-PASSWORD]@db.zmvzayfmsbzqcdgjqwnd.supabase.co:5432/postgres`
+   - `JWT_SECRET`: `supersecretfallback_pleasechange`
+   - `CLIENT_URL`: `https://ciphera-chat.vercel.app`
+   - `SERVER_PORT`: `4000`
+
+## Step 4: Link Frontend to New Backend
+Once your backend is successfully deployed, it will give you a public URL (e.g., `https://securechat-backend.onrender.com`).
+1. Go to your Vercel Dashboard for the frontend.
+2. Go to **Settings** -> **Environment Variables**.
+3. Add a new variable called `NEXT_PUBLIC_API_URL` and set it to your new backend URL (e.g., `https://securechat-backend.onrender.com/api`).
+4. Redeploy the frontend in Vercel to apply the changes.
