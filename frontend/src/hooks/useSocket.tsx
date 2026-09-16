@@ -2,9 +2,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import axios from 'axios';
 import { useAuth } from './useAuth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 interface SocketContextType {
   socket: Socket | null;
@@ -32,28 +33,30 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     const connectSocket = async () => {
       try {
-        const res = await fetch(`${API_URL}/auth/socket-token`, { 
-          method: 'GET',
-          credentials: 'include' 
-        });
+        const res = await axios.get(`${API_URL}/auth/socket-token`);
         
-        if (!res.ok) throw new Error('Failed to get socket token');
-        
-        const data = await res.json();
+        const socketToken = res.data.socketToken;
         if (!active) return;
 
-        currentSocket = io(API_URL.replace('/api', ''), {
-          auth: { token: data.socketToken },
+        // Ensure we gracefully handle trailing slashes in API_URL
+        const baseUrl = API_URL.replace(/\/api\/?$/, '');
+
+        currentSocket = io(baseUrl, {
+          auth: { token: socketToken },
           withCredentials: true,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: 10,
+          transports: ['polling', 'websocket'], // explicit transports
         });
 
         currentSocket.on('connect', () => setIsConnected(true));
         currentSocket.on('disconnect', () => setIsConnected(false));
+        currentSocket.on('connect_error', (err) => {
+          console.error('Socket connect_error:', err.message);
+        });
         
         setSocket(currentSocket);
       } catch (err) {
-        console.error('Socket connection failed:', err);
+        console.error('Socket connection or token fetch failed:', err);
       }
     };
 
