@@ -11,7 +11,8 @@ import {
   generateSessionKey,
   encryptSessionKey,
 } from '@securechat/crypto';
-import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound } from 'lucide-react';
+import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound, Smile } from 'lucide-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { theme } from '@/lib/theme';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -64,6 +65,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
   const [activeSessionKey, setActiveSessionKey] = useState<CryptoKey | null>(null);
   const [activeKeyVersion, setActiveKeyVersion] = useState<number>(0);
   const [decryptionErrors, setDecryptionErrors] = useState<Record<string, string>>({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -487,38 +489,59 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
         className="border-t p-4"
         style={{ background: theme.card, borderColor: theme.borderMuted }}
       >
-        <form onSubmit={handleSend} className="mx-auto flex max-w-3xl gap-2">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            disabled={!activeSessionKey}
-            placeholder={
-              !isConnected 
-                ? 'Connecting to secure server…' 
-                : !activeSessionKey 
-                  ? 'Cannot decrypt: Private key missing or corrupted' 
-                  : 'Type an encrypted message…'
-            }
-            className="flex-1 rounded-xl px-5 py-3 text-sm outline-none transition-shadow focus:ring-2 disabled:opacity-50"
-            style={{
-              background: theme.surface,
-              border: `1px solid ${theme.border}`,
-              color: !isConnected || !activeSessionKey ? theme.textDim : theme.text,
-            }}
-          />
-          <button
-            type="submit"
-            disabled={!activeSessionKey || !inputText.trim()}
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl transition-opacity disabled:opacity-40"
-            style={{
-              background: theme.accentMuted,
-              color: '#000000',
-            }}
-          >
-            <Send size={18} className="ml-0.5" />
-          </button>
-        </form>
+        <div className="relative mx-auto flex max-w-3xl">
+          {showEmojiPicker && (
+            <div className="absolute bottom-16 left-0 z-50 shadow-2xl">
+              <EmojiPicker
+                theme={Theme.DARK}
+                onEmojiClick={(emojiData) => {
+                  setInputText((prev) => prev + emojiData.emoji);
+                }}
+              />
+            </div>
+          )}
+          <form onSubmit={handleSend} className="flex flex-1 gap-2">
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker((prev) => !prev)}
+              disabled={!activeSessionKey}
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-white/5 disabled:opacity-40"
+              style={{ color: theme.textDim }}
+            >
+              <Smile size={20} />
+            </button>
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              disabled={!activeSessionKey}
+              placeholder={
+                !isConnected 
+                  ? 'Connecting to secure server…' 
+                  : !activeSessionKey 
+                    ? 'Cannot decrypt: Private key missing or corrupted' 
+                    : 'Type an encrypted message…'
+              }
+              className="flex-1 rounded-xl px-5 py-3 text-sm outline-none transition-shadow focus:ring-2 disabled:opacity-50"
+              style={{
+                background: theme.surface,
+                border: `1px solid ${theme.border}`,
+                color: !isConnected || !activeSessionKey ? theme.textDim : theme.text,
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!activeSessionKey || !inputText.trim()}
+              className="flex size-11 shrink-0 items-center justify-center rounded-xl transition-opacity disabled:opacity-40"
+              style={{
+                background: theme.accentMuted,
+                color: '#000000',
+              }}
+            >
+              <Send size={18} className="ml-0.5" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
