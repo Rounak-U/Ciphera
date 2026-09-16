@@ -12,11 +12,17 @@ import { setupSocketHandlers } from './socket/socket';
 
 dotenv.config();
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://ciphera-chat.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean) as string[];
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -24,7 +30,7 @@ const io = new Server(httpServer, {
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
 }));
 app.use(express.json());
