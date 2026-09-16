@@ -124,13 +124,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.warn('Logout request failed', e);
     }
     
-    // Clear the private key securely from this browser session
-    if (user?.id) {
-      localStorage.removeItem(`securechat_private_key_${user.id}`);
-    }
-    
     setUser(null);
     setPrivateKey(null);
+    // Deliberately NOT removing from localStorage so users don't permanently lose their keys when logging out.
   };
 
   const deleteAccount = async () => {
