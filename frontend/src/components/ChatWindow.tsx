@@ -452,13 +452,17 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
             onChange={(e) => setInputText(e.target.value)}
             disabled={!activeSessionKey}
             placeholder={
-              activeSessionKey ? 'Type an encrypted message…' : 'Waiting for secure connection…'
+              !isConnected 
+                ? 'Connecting to secure server…' 
+                : !activeSessionKey 
+                  ? 'Cannot decrypt: Private key missing or corrupted' 
+                  : 'Type an encrypted message…'
             }
             className="flex-1 rounded-xl px-5 py-3 text-sm outline-none transition-shadow focus:ring-2 disabled:opacity-50"
             style={{
               background: theme.surface,
               border: `1px solid ${theme.border}`,
-              color: theme.text,
+              color: !isConnected || !activeSessionKey ? theme.textDim : theme.text,
             }}
           />
           <button
