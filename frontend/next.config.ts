@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@securechat/crypto', '@securechat/config', '@securechat/types'],
   turbopack: {
     root: path.join(process.cwd(), ".."),
   },
