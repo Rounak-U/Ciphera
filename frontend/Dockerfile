@@ -4,8 +4,8 @@ WORKDIR /app
 
 # Copy workspace setup
 COPY package.json pnpm-workspace.yaml ./
-COPY apps/server/package.json apps/server/
-COPY apps/web/package.json apps/web/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
 COPY packages/crypto/package.json packages/crypto/
 COPY packages/types/package.json packages/types/
 COPY packages/config/package.json packages/config/
@@ -21,7 +21,7 @@ WORKDIR /app/packages/crypto
 RUN npm run build
 
 # Build Next.js
-WORKDIR /app/apps/web
+WORKDIR /app/frontend
 RUN npm run build
 
 EXPOSE 3000

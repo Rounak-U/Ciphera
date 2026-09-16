@@ -7,8 +7,8 @@ RUN npm install -g pnpm
 
 # Copy workspace config and package.json files
 COPY package.json pnpm-workspace.yaml ./
-COPY apps/server/package.json apps/server/
-COPY apps/web/package.json apps/web/
+COPY backend/package.json backend/
+COPY frontend/package.json frontend/
 COPY packages/crypto/package.json packages/crypto/
 COPY packages/types/package.json packages/types/
 COPY packages/config/package.json packages/config/
@@ -20,8 +20,8 @@ RUN npm install --legacy-peer-deps
 COPY . .
 
 # Generate Prisma Client
-WORKDIR /app/apps/server
-RUN npx prisma generate --schema=../../prisma/schema.prisma
+WORKDIR /app/backend
+RUN npx prisma generate --schema=../prisma/schema.prisma
 
 # Build shared packages
 WORKDIR /app/packages/crypto
@@ -32,7 +32,7 @@ WORKDIR /app/packages/config
 RUN npm run build
 
 # Build server
-WORKDIR /app/apps/server
+WORKDIR /app/backend
 RUN npx tsc
 
 EXPOSE 4000
