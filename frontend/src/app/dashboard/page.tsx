@@ -41,14 +41,17 @@ export default function Dashboard() {
       className="flex h-screen overflow-hidden"
       style={{ background: theme.bg, color: theme.text }}
     >
-      <Sidebar
-        onSelectConversation={setActiveConversationId}
-        activeConversationId={activeConversationId}
-      />
+      <div className={`h-full w-full md:w-80 shrink-0 ${activeConversationId ? 'hidden md:block' : 'block'}`}>
+        <Sidebar
+          onSelectConversation={setActiveConversationId}
+          activeConversationId={activeConversationId}
+        />
+      </div>
 
-      {activeConversationId ? (
-        <ChatWindow conversationId={activeConversationId} />
-      ) : (
+      <div className={`flex flex-1 flex-col min-w-0 ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
+        {activeConversationId ? (
+          <ChatWindow conversationId={activeConversationId} onBack={() => setActiveConversationId(null)} />
+        ) : (
         <div
           className="relative flex flex-1 flex-col items-center justify-center overflow-hidden border-l px-6"
           style={{
@@ -113,7 +116,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   generateSessionKey,
   encryptSessionKey,
 } from '@securechat/crypto';
-import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound, Smile } from 'lucide-react';
+import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound, Smile, ArrowLeft } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { theme } from '@/lib/theme';
 
@@ -22,14 +22,14 @@ const playSound = (type: 'send' | 'receive') => {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
-    
+
     const ctx = new AudioContextClass();
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    
+
     osc.connect(gainNode);
     gainNode.connect(ctx.destination);
-    
+
     if (type === 'send') {
       // Quick ascending bloop
       osc.type = 'sine';
@@ -54,7 +54,7 @@ const playSound = (type: 'send' | 'receive') => {
   }
 };
 
-export default function ChatWindow({ conversationId }: { conversationId: string }) {
+export default function ChatWindow({ conversationId, onBack }: { conversationId: string; onBack?: () => void }) {
   const { user, getPrivateKey } = useAuth();
   const { socket, isConnected } = useSocket();
 
@@ -339,7 +339,7 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
         nonce,
         keyVersion: activeKeyVersion,
       });
-      
+
       playSound('send');
     } catch (error: any) {
       console.warn('Failed to encrypt/send:', error.message || error);
@@ -369,15 +369,24 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
     <div className="flex h-full flex-1 flex-col" style={{ background: theme.bg }}>
       {/* Header */}
       <div
-        className="z-10 flex h-16 items-center justify-between border-b px-6"
+        className="z-10 flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6"
         style={{
           background: theme.card,
           borderColor: theme.borderMuted,
         }}
       >
         <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="md:hidden flex items-center justify-center p-2 -ml-2 rounded-lg transition-colors hover:bg-white/5"
+              style={{ color: theme.textDim }}
+            >
+              <ArrowLeft size={20} />
+            </button>
+          )}
           <div
-            className="flex size-10 items-center justify-center rounded-full text-sm font-semibold"
+            className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
             style={{
               background: theme.accentSoft,
               color: theme.accent,
@@ -396,15 +405,17 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs font-medium">
+        <div className="flex shrink-0 items-center gap-2 text-xs font-medium">
           <Badge icon={<Lock size={12} />} label="E2E Encrypted" accent />
-          <Badge icon={<KeyRound size={12} />} label={`Key v${activeKeyVersion}`} />
+          <div className="hidden md:block">
+            <Badge icon={<KeyRound size={12} />} label={`Key v${activeKeyVersion}`} />
+          </div>
         </div>
       </div>
 
       {/* Messages */}
       <div
-        className="flex-1 space-y-3 overflow-y-auto p-6"
+        className="flex-1 space-y-3 overflow-y-auto p-4 md:p-6"
         style={{ background: theme.bg }}
       >
         {messages.length === 0 && (
@@ -424,23 +435,23 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
                 style={
                   msg.isTampered
                     ? {
-                        background: 'rgba(127, 29, 29, 0.25)',
-                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                        color: '#fca5a5',
-                        borderRadius: 16,
-                      }
+                      background: 'rgba(127, 29, 29, 0.25)',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      color: '#fca5a5',
+                      borderRadius: 16,
+                    }
                     : isMe
                       ? {
-                          background: theme.accentMuted,
-                          color: '#000000',
-                          borderRadius: '16px 16px 4px 16px',
-                        }
+                        background: theme.accentMuted,
+                        color: '#000000',
+                        borderRadius: '16px 16px 4px 16px',
+                      }
                       : {
-                          background: theme.card,
-                          color: theme.text,
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: '16px 16px 16px 4px',
-                        }
+                        background: theme.card,
+                        color: theme.text,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: '16px 16px 16px 4px',
+                      }
                 }
               >
                 {msg.isTampered ? (
@@ -516,10 +527,10 @@ export default function ChatWindow({ conversationId }: { conversationId: string 
               onChange={(e) => setInputText(e.target.value)}
               disabled={!activeSessionKey}
               placeholder={
-                !isConnected 
-                  ? 'Connecting to secure server…' 
-                  : !activeSessionKey 
-                    ? 'Cannot decrypt: Private key missing or corrupted' 
+                !isConnected
+                  ? 'Connecting to secure server…'
+                  : !activeSessionKey
+                    ? 'Cannot decrypt: Private key missing or corrupted'
                     : 'Type an encrypted message…'
               }
               className="flex-1 rounded-xl px-5 py-3 text-sm outline-none transition-shadow focus:ring-2 disabled:opacity-50"

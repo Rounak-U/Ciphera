@@ -133,7 +133,7 @@ export default function Sidebar({
 
   return (
     <div
-      className="flex h-full w-80 flex-col border-r"
+      className="flex h-full w-full flex-col md:border-r"
       style={{ background: theme.card, borderColor: theme.borderMuted, color: theme.text }}
     >
       {/* Header */}
