@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2 } from 'lucide-react';
+import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2, MoreVertical, Palette } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { generateSessionKey, encryptSessionKey, importPublicKey } from '@securechat/crypto';
@@ -28,7 +28,19 @@ export default function Sidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetchConversations();
@@ -151,22 +163,66 @@ export default function Sidebar({
             Ciphera
           </h2>
         </div>
-        <div className="flex items-center gap-1">
-          <Link
-            href="/security"
+        <div className="flex items-center gap-1 relative" ref={settingsRef}>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
             className="rounded-lg p-2 transition-colors hover:opacity-80"
             style={{ color: theme.textMuted }}
-            title="Security Lab"
+            title="Settings"
           >
-            <ShieldAlert size={18} strokeWidth={1.5} />
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="rounded-lg p-2 transition-colors text-red-500 hover:bg-red-500/10 hover:text-red-400"
-            title="Logout"
-          >
-            <LogOut size={18} strokeWidth={1.5} />
+            <MoreVertical size={18} strokeWidth={1.5} />
           </button>
+
+          {showSettings && (
+            <div 
+              className="absolute top-full right-0 mt-2 w-56 rounded-xl shadow-lg border z-50 overflow-hidden" 
+              style={{ background: theme.surface, borderColor: theme.border }}
+            >
+              <div className="py-1">
+                <Link
+                  href="/security"
+                  className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                  style={{ color: theme.text }}
+                  onClick={() => setShowSettings(false)}
+                >
+                  <ShieldAlert size={16} style={{ color: theme.textMuted }} />
+                  Security Lab
+                </Link>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                  style={{ color: theme.text }}
+                  onClick={() => {
+                    alert('Chat theme settings coming soon!');
+                    setShowSettings(false);
+                  }}
+                >
+                  <Palette size={16} style={{ color: theme.textMuted }} />
+                  Chat Theme
+                </button>
+                <div className="h-px w-full my-1" style={{ background: theme.borderMuted }}></div>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    handleDeleteAccount();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-red-500 hover:bg-red-500/10"
+                >
+                  <Trash2 size={16} />
+                  Delete Account
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSettings(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-red-500 hover:bg-red-500/10"
+                >
+                  <LogOut size={16} />
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -316,13 +372,6 @@ export default function Sidebar({
               {user?.email}
             </p>
           </div>
-          <button 
-            onClick={handleDeleteAccount}
-            className="rounded-lg p-1.5 transition-colors text-red-500 hover:bg-red-500/10"
-            title="Delete Account"
-          >
-            <Trash2 size={16} strokeWidth={1.5} />
-          </button>
         </div>
       </div>
     </div>
