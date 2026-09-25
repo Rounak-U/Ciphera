@@ -14,6 +14,7 @@ import {
 import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound, Smile, ArrowLeft } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { theme } from '@/lib/theme';
+import { PromptInput } from "@/components/ui/ai-chat-input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 const ROTATION_LIMIT = 30;
@@ -54,7 +55,7 @@ const playSound = (type: 'send' | 'receive') => {
   }
 };
 
-export default function ChatWindow({ conversationId, onBack }: { conversationId: string; onBack?: () => void }) {
+export default function ChatWindow({ conversationId, onBack, chatTheme = 'default' }: { conversationId: string; onBack?: () => void; chatTheme?: 'default' | 'ruixen' | 'sunset' }) {
   const { user, getPrivateKey } = useAuth();
   const { socket, isConnected } = useSocket();
 
@@ -346,6 +347,27 @@ export default function ChatWindow({ conversationId, onBack }: { conversationId:
     }
   };
 
+  const handlePromptSubmit = async (value: string) => {
+    if (!value.trim() || !activeSessionKey || !socket) return;
+
+    await rotateKeyIfNecessary();
+
+    try {
+      const { ciphertext, nonce } = await encryptMessage(value, activeSessionKey);
+
+      socket.emit('send_message', {
+        conversationId,
+        ciphertext,
+        nonce,
+        keyVersion: activeKeyVersion,
+      });
+
+      playSound('send');
+    } catch (error: any) {
+      console.warn('Failed to encrypt/send:', error.message || error);
+    }
+  };
+
   if (!conversation) {
     return (
       <div
@@ -366,13 +388,24 @@ export default function ChatWindow({ conversationId, onBack }: { conversationId:
   const otherMember = conversation.members.find((m: any) => m.userId !== user?.id)?.user;
 
   return (
-    <div className="flex h-full flex-1 flex-col" style={{ background: theme.bg }}>
+    <div 
+      className={`flex h-full flex-1 flex-col ${chatTheme === 'ruixen' || chatTheme === 'sunset' ? 'bg-cover bg-center' : ''}`}
+      style={{ 
+        background: chatTheme === 'ruixen' ? undefined : (chatTheme === 'sunset' ? undefined : theme.bg),
+        backgroundImage: chatTheme === 'ruixen' 
+          ? "url('https://cdn.21st.dev/assets/mirror/c3/c333918af688a4a8a3d004652e6c0ee219457a9d84d380eeb31f513d4b59a09f.png')" 
+          : chatTheme === 'sunset'
+            ? "radial-gradient(125% 125% at 50% 101%, rgba(245,87,2,1) 10.5%, rgba(245,120,2,1) 16%, rgba(245,140,2,1) 17.5%, rgba(245,170,100,1) 25%, rgba(238,174,202,1) 40%, rgba(202,179,214,1) 65%, rgba(148,201,233,1) 100%)"
+            : undefined,
+        backgroundPosition: chatTheme === 'ruixen' || chatTheme === 'sunset' ? 'center' : undefined,
+      }}
+    >
       {/* Header */}
       <div
-        className="z-10 flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6"
+        className={`z-10 flex h-16 shrink-0 items-center justify-between border-b px-4 md:px-6 ${chatTheme === 'ruixen' || chatTheme === 'sunset' ? 'backdrop-blur-md' : ''}`}
         style={{
-          background: theme.card,
-          borderColor: theme.borderMuted,
+          background: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'rgba(0, 0, 0, 0.5)' : theme.card,
+          borderColor: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'rgba(255, 255, 255, 0.1)' : theme.borderMuted,
         }}
       >
         <div className="flex items-center gap-3">
@@ -416,7 +449,7 @@ export default function ChatWindow({ conversationId, onBack }: { conversationId:
       {/* Messages */}
       <div
         className="flex-1 space-y-3 overflow-y-auto p-4 md:p-6"
-        style={{ background: theme.bg }}
+        style={{ background: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'transparent' : theme.bg }}
       >
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center py-12">
@@ -497,8 +530,11 @@ export default function ChatWindow({ conversationId, onBack }: { conversationId:
 
       {/* Input */}
       <div
-        className="border-t p-4"
-        style={{ background: theme.card, borderColor: theme.borderMuted }}
+        className={`border-t p-4 ${chatTheme === 'ruixen' || chatTheme === 'sunset' ? 'backdrop-blur-md' : ''}`}
+        style={{ 
+          background: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'rgba(0, 0, 0, 0.5)' : theme.card, 
+          borderColor: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'rgba(255, 255, 255, 0.1)' : theme.borderMuted 
+        }}
       >
         <div className="relative mx-auto flex max-w-3xl">
           {showEmojiPicker && (
@@ -535,8 +571,8 @@ export default function ChatWindow({ conversationId, onBack }: { conversationId:
               }
               className="flex-1 rounded-xl px-5 py-3 text-sm outline-none transition-shadow focus:ring-2 disabled:opacity-50"
               style={{
-                background: theme.surface,
-                border: `1px solid ${theme.border}`,
+                background: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? 'rgba(255, 255, 255, 0.1)' : theme.surface,
+                border: (chatTheme === 'ruixen' || chatTheme === 'sunset') ? '1px solid rgba(255, 255, 255, 0.2)' : `1px solid ${theme.border}`,
                 color: !isConnected || !activeSessionKey ? theme.textDim : theme.text,
               }}
             />

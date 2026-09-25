@@ -18,9 +18,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 export default function Sidebar({
   onSelectConversation,
   activeConversationId,
+  onThemeChange,
 }: {
   onSelectConversation: (id: string) => void;
   activeConversationId: string | null;
+  onThemeChange?: (theme: 'default' | 'ruixen' | 'sunset') => void;
 }) {
   const { user, logout, deleteAccount, getPrivateKey } = useAuth();
   const { socket } = useSocket();
@@ -52,9 +54,9 @@ export default function Sidebar({
         console.log('🔔 Sidebar received real-time socket ping! Fetching latest conversations...');
         fetchConversations();
       };
-      
+
       socket.on('receive_message', handleNewMessage);
-      
+
       return () => {
         socket.off('receive_message', handleNewMessage);
       };
@@ -134,7 +136,7 @@ export default function Sidebar({
   const handleDeleteAccount = async () => {
     const confirmed = window.confirm("Are you sure you want to permanently delete your account? This will wipe all your conversations and session keys, and cannot be undone.");
     if (!confirmed) return;
-    
+
     try {
       await deleteAccount();
       router.push('/login');
@@ -151,10 +153,10 @@ export default function Sidebar({
       {/* Header */}
       <div className="flex items-center justify-between p-5">
         <div className="flex items-center gap-2.5">
-          <h2 
+          <h2
             className={`${dancingScript.className} tracking-tight`}
-            style={{ 
-              color: '#4ade80', 
+            style={{
+              color: '#4ade80',
               fontSize: '1.75rem',
               textShadow: '0 0 10px rgba(74, 222, 128, 0.4)',
               lineHeight: 1,
@@ -174,8 +176,8 @@ export default function Sidebar({
           </button>
 
           {showSettings && (
-            <div 
-              className="absolute top-full right-0 mt-2 w-56 rounded-xl shadow-lg border z-50 overflow-hidden" 
+            <div
+              className="absolute top-full right-0 mt-2 w-56 rounded-xl shadow-lg border z-50 overflow-hidden"
               style={{ background: theme.surface, borderColor: theme.border }}
             >
               <div className="py-1">
@@ -192,12 +194,34 @@ export default function Sidebar({
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
                   style={{ color: theme.text }}
                   onClick={() => {
-                    alert('Chat theme settings coming soon!');
+                    onThemeChange?.('default');
                     setShowSettings(false);
                   }}
                 >
                   <Palette size={16} style={{ color: theme.textMuted }} />
-                  Chat Theme
+                  Default Theme
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                  style={{ color: theme.text }}
+                  onClick={() => {
+                    onThemeChange?.('ruixen');
+                    setShowSettings(false);
+                  }}
+                >
+                  <Palette size={16} style={{ color: theme.textMuted }} />
+                  Ruixen Moon Theme
+                </button>
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
+                  style={{ color: theme.text }}
+                  onClick={() => {
+                    onThemeChange?.('sunset');
+                    setShowSettings(false);
+                  }}
+                >
+                  <Palette size={16} style={{ color: theme.textMuted }} />
+                  Sunset Theme
                 </button>
                 <div className="h-px w-full my-1" style={{ background: theme.borderMuted }}></div>
                 <button
@@ -347,7 +371,7 @@ export default function Sidebar({
                       </p>
                     </div>
                     {!isActive && unreadCount > 0 && (
-                      <div 
+                      <div
                         className="flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold text-black"
                         style={{ background: theme.accent }}
                       >

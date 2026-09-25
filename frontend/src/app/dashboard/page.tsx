@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import ChatWindow from '@/components/ChatWindow';
+import RuixenMoonChat from '@/components/ui/ruixen-moon-chat';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Lock, MessageSquare } from 'lucide-react';
@@ -12,7 +13,20 @@ import PixelBlast from '@/components/ui/PixelBlast';
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [chatTheme, setChatTheme] = useState<'default' | 'ruixen' | 'sunset'>('default');
   const router = useRouter();
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('ciphera_chatTheme') as 'default' | 'ruixen' | 'sunset' | null;
+    if (savedTheme) {
+      setChatTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (newTheme: 'default' | 'ruixen' | 'sunset') => {
+    setChatTheme(newTheme);
+    localStorage.setItem('ciphera_chatTheme', newTheme);
+  };
 
   if (loading) {
     return (
@@ -45,12 +59,13 @@ export default function Dashboard() {
         <Sidebar
           onSelectConversation={setActiveConversationId}
           activeConversationId={activeConversationId}
+          onThemeChange={handleThemeChange}
         />
       </div>
 
       <div className={`flex flex-1 flex-col min-w-0 ${!activeConversationId ? 'hidden md:flex' : 'flex'}`}>
         {activeConversationId ? (
-          <ChatWindow conversationId={activeConversationId} onBack={() => setActiveConversationId(null)} />
+          <ChatWindow conversationId={activeConversationId} onBack={() => setActiveConversationId(null)} chatTheme={chatTheme} />
         ) : (
         <div
           className="relative flex flex-1 flex-col items-center justify-center overflow-hidden border-l px-6"
