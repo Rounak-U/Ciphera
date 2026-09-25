@@ -8,6 +8,8 @@ interface SocketWithUser extends Socket {
   userId?: string;
 }
 
+const onlineUsers = new Map<string, number>();
+
 export const setupSocketHandlers = (io: Server) => {
   io.use((socket: SocketWithUser, next) => {
     try {
@@ -39,6 +41,17 @@ export const setupSocketHandlers = (io: Server) => {
   io.on('connection', (socket: SocketWithUser) => {
     const userId = socket.userId!;
     
+    // Track online status
+    const count = (onlineUsers.get(userId) || 0) + 1;
+    onlineUsers.set(userId, count);
+    if (count === 1) {
+      io.emit('user_online', userId);
+    }
+
+    socket.on('get_online_users', () => {
+      socket.emit('online_users', Array.from(onlineUsers.keys()));
+    });
+
     // Join a personal room for direct events
     socket.join(`user:${userId}`);
 
@@ -187,7 +200,13 @@ export const setupSocketHandlers = (io: Server) => {
     });
 
     socket.on('disconnect', () => {
-      // Cleanup
+      const count = (onlineUsers.get(userId) || 0) - 1;
+      if (count <= 0) {
+        onlineUsers.delete(userId);
+        io.emit('user_offline', userId);
+      } else {
+        onlineUsers.set(userId, count);
+      }
     });
   });
 };

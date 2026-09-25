@@ -11,9 +11,15 @@ export const createConversation = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    if (userId === targetUserId) {
+      res.status(400).json({ error: 'Cannot create a conversation with yourself' });
+      return;
+    }
+
     // Check if conversation already exists between these two users
     const existingConversation = await prisma.conversation.findFirst({
       where: {
+        isGroup: false,
         AND: [
           { members: { some: { userId: userId } } },
           { members: { some: { userId: targetUserId } } }
@@ -55,6 +61,45 @@ export const createConversation = async (req: Request, res: Response): Promise<v
     res.status(201).json(newConversation);
   } catch (error) {
     console.error('Create conversation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const createGroupConversation = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { name, targetUserIds, initialEncryptedKeyMaterial } = req.body;
+    const userId = (req as any).userId;
+
+    if (!targetUserIds || !Array.isArray(targetUserIds) || targetUserIds.length === 0) {
+      res.status(400).json({ error: 'targetUserIds array is required' });
+      return;
+    }
+
+    const allMemberIds = Array.from(new Set([userId, ...targetUserIds]));
+
+    const newConversation = await prisma.conversation.create({
+      data: {
+        isGroup: true,
+        name: name || 'New Group',
+        members: {
+          create: allMemberIds.map(id => ({ userId: id }))
+        },
+        sessionKeys: {
+          create: {
+            keyVersion: 1,
+            encryptedKeyMaterial: JSON.stringify(initialEncryptedKeyMaterial || {})
+          }
+        }
+      },
+      include: {
+        members: { include: { user: { select: { id: true, username: true, publicKey: true } } } },
+        sessionKeys: { orderBy: { keyVersion: 'desc' }, take: 1 }
+      }
+    });
+
+    res.status(201).json(newConversation);
+  } catch (error) {
+    console.error('Create group conversation error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

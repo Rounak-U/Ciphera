@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2, MoreVertical, Palette } from 'lucide-react';
+import { Search, Plus, User as UserIcon, LogOut, Shield, ShieldAlert, Trash2, MoreVertical, Palette, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSocket } from '@/hooks/useSocket';
 import { generateSessionKey, encryptSessionKey, importPublicKey } from '@securechat/crypto';
@@ -25,12 +25,17 @@ export default function Sidebar({
   onThemeChange?: (theme: 'default' | 'ruixen' | 'sunset') => void;
 }) {
   const { user, logout, deleteAccount, getPrivateKey } = useAuth();
-  const { socket } = useSocket();
+  const { socket, onlineUsers } = useSocket();
   const [conversations, setConversations] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [groupName, setGroupName] = useState('');
+  
   const settingsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -63,7 +68,7 @@ export default function Sidebar({
     }
   }, [socket]);
 
-  const fetchConversations = async () => {
+  async function fetchConversations() {
     try {
       const res = await axios.get(`${API_URL}/conversations`);
       setConversations(res.data);
@@ -116,6 +121,43 @@ export default function Sidebar({
       alert(
         'Failed to start conversation due to cryptographic constraints. Did you lose your private key?',
       );
+    }
+  };
+
+  const startGroupConversation = async () => {
+    if (groupMembers.length === 0 || !groupName.trim()) return;
+
+    try {
+      const sessionKey = await generateSessionKey();
+      
+      const myPublicKey = await importPublicKey(user!.publicKey);
+      const encryptedForSelf = await encryptSessionKey(sessionKey, myPublicKey);
+      
+      const initialEncryptedKeyMaterial: Record<string, string> = {
+        [user!.id]: encryptedForSelf
+      };
+
+      for (const m of groupMembers) {
+        const targetPublicKey = await importPublicKey(m.publicKey);
+        initialEncryptedKeyMaterial[m.id] = await encryptSessionKey(sessionKey, targetPublicKey);
+      }
+
+      const res = await axios.post(`${API_URL}/conversations/group`, {
+        name: groupName,
+        targetUserIds: groupMembers.map(m => m.id),
+        initialEncryptedKeyMaterial,
+      });
+
+      setSearchQuery('');
+      setIsSearching(false);
+      setIsCreatingGroup(false);
+      setGroupMembers([]);
+      setGroupName('');
+      await fetchConversations();
+      onSelectConversation(res.data.id);
+    } catch (error: any) {
+      console.warn('Failed to start group conversation:', error.message || error);
+      alert('Failed to start group conversation. Please try again.');
     }
   };
 
@@ -252,6 +294,21 @@ export default function Sidebar({
 
       {/* Search */}
       <div className="px-4 pb-4">
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={() => setIsCreatingGroup(!isCreatingGroup)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm transition-colors ${
+              isCreatingGroup ? 'bg-green-500/20 text-green-500' : 'hover:bg-white/5'
+            }`}
+            style={{ 
+              color: isCreatingGroup ? theme.accent : theme.textDim,
+              border: `1px solid ${isCreatingGroup ? theme.accent : theme.border}` 
+            }}
+          >
+            <Users size={16} />
+            {isCreatingGroup ? 'Cancel Group' : 'New Group'}
+          </button>
+        </div>
         <div className="relative">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
@@ -262,7 +319,7 @@ export default function Sidebar({
             type="text"
             value={searchQuery}
             onChange={handleSearch}
-            placeholder="Search users…"
+            placeholder={isCreatingGroup ? "Search users to add..." : "Search users…"}
             className="block w-full rounded-lg py-2.5 pr-3 pl-10 text-sm outline-none transition-shadow focus:ring-2"
             style={{
               background: theme.surface,
@@ -275,6 +332,41 @@ export default function Sidebar({
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-3">
+        {isCreatingGroup && (
+          <div className="px-2 mb-4">
+            <input
+              type="text"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              placeholder="Enter Group Name..."
+              className="block w-full rounded-lg py-2 px-3 text-sm outline-none transition-shadow focus:ring-2 mb-2"
+              style={{
+                background: theme.surfaceHover,
+                border: `1px solid ${theme.border}`,
+                color: theme.text,
+              }}
+            />
+            {groupMembers.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {groupMembers.map(m => (
+                  <div key={m.id} className="flex items-center gap-1 rounded-full px-2 py-1 text-xs" style={{ background: theme.accentMuted, color: theme.bg }}>
+                    {m.username}
+                    <button onClick={() => setGroupMembers(prev => prev.filter(u => u.id !== m.id))} className="opacity-70 hover:opacity-100">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={startGroupConversation}
+              disabled={groupMembers.length === 0 || !groupName.trim()}
+              className="w-full rounded-lg py-2 text-sm font-medium transition-opacity disabled:opacity-50"
+              style={{ background: theme.accent, color: '#000000' }}
+            >
+              Create Group Chat
+            </button>
+          </div>
+        )}
+
         {isSearching ? (
           <div className="py-2">
             <h3
@@ -286,7 +378,15 @@ export default function Sidebar({
             {searchResults.map((u) => (
               <div
                 key={u.id}
-                onClick={() => startConversation(u)}
+                onClick={() => {
+                  if (isCreatingGroup) {
+                    if (!groupMembers.find(m => m.id === u.id)) {
+                      setGroupMembers([...groupMembers, u]);
+                    }
+                  } else {
+                    startConversation(u);
+                  }
+                }}
                 className="mx-1 mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
                 style={{ background: 'transparent' }}
                 onMouseEnter={(e) => {
@@ -296,7 +396,7 @@ export default function Sidebar({
                   e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <Avatar initials={u.username?.[0]?.toUpperCase() || '?'} active={false} />
+                <Avatar initials={u.username?.[0]?.toUpperCase() || '?'} active={false} isOnline={onlineUsers.has(u.id)} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{u.username}</p>
                 </div>
@@ -354,15 +454,16 @@ export default function Sidebar({
                     }}
                   >
                     <Avatar
-                      initials={otherMember.username?.[0]?.toUpperCase() || '?'}
+                      initials={conv.isGroup ? (conv.name?.[0]?.toUpperCase() || 'G') : (otherMember?.username?.[0]?.toUpperCase() || '?')}
                       active={isActive}
+                      isOnline={!conv.isGroup && otherMember ? onlineUsers.has(otherMember.id) : undefined}
                     />
                     <div className="min-w-0 flex-1">
                       <p
                         className="truncate text-sm font-medium"
                         style={{ color: isActive ? theme.accent : theme.text }}
                       >
-                        {otherMember.username}
+                        {conv.isGroup ? conv.name : otherMember?.username}
                       </p>
                       <p className="mt-0.5 truncate text-xs" style={{ color: theme.textDim }}>
                         {conv.messages && conv.messages[0]
@@ -402,17 +503,25 @@ export default function Sidebar({
   );
 }
 
-function Avatar({ initials, active }: { initials: string; active: boolean }) {
+function Avatar({ initials, active, isOnline }: { initials: string; active: boolean; isOnline?: boolean }) {
   return (
-    <div
-      className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-      style={{
-        background: active ? theme.accentMuted : theme.surface,
-        color: active ? theme.bg : theme.textMuted,
-        border: `1px solid ${active ? theme.accent : theme.border}`,
-      }}
-    >
-      {initials}
+    <div className="relative inline-block">
+      <div
+        className="flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+        style={{
+          background: active ? theme.accentMuted : theme.surface,
+          color: active ? theme.bg : theme.textMuted,
+          border: `1px solid ${active ? theme.accent : theme.border}`,
+        }}
+      >
+        {initials}
+      </div>
+      {isOnline && (
+        <span 
+          className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 border-2" 
+          style={{ borderColor: theme.card }} 
+        />
+      )}
     </div>
   );
 }

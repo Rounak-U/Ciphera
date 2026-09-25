@@ -24,6 +24,8 @@ model User {
 
 model Conversation {
   id           String   @id @default(uuid())
+  isGroup      Boolean  @default(false)
+  name         String?  // Optional group name
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   

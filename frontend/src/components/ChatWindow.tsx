@@ -67,6 +67,9 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
   const [activeKeyVersion, setActiveKeyVersion] = useState<number>(0);
   const [decryptionErrors, setDecryptionErrors] = useState<Record<string, string>>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -116,16 +119,40 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
         }
       };
 
+      const handleTypingStart = (data: any) => {
+        if (data.conversationId === conversationId && data.userId !== user?.id) {
+          setTypingUsers((prev) => {
+            const next = new Set(prev);
+            next.add(data.userId);
+            return next;
+          });
+        }
+      };
+
+      const handleTypingStop = (data: any) => {
+        if (data.conversationId === conversationId) {
+          setTypingUsers((prev) => {
+            const next = new Set(prev);
+            next.delete(data.userId);
+            return next;
+          });
+        }
+      };
+
       socket.on('receive_message', handleReceive);
       socket.on('key_rotation', handleRotation);
       socket.on('message_delivered', handleDelivered);
       socket.on('message_read', handleRead);
+      socket.on('typing_start', handleTypingStart);
+      socket.on('typing_stop', handleTypingStop);
 
       return () => {
         socket.off('receive_message', handleReceive);
         socket.off('key_rotation', handleRotation);
         socket.off('message_delivered', handleDelivered);
         socket.off('message_read', handleRead);
+        socket.off('typing_start', handleTypingStart);
+        socket.off('typing_stop', handleTypingStop);
       };
     }
   }, [socket, conversationId, activeSessionKey]);
@@ -368,6 +395,19 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    
+    if (socket && conversationId) {
+      socket.emit('typing_start', conversationId);
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        socket.emit('typing_stop', conversationId);
+      }, 2000);
+    }
+  };
+
   if (!conversation) {
     return (
       <div
@@ -525,6 +565,21 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
             </div>
           );
         })}
+        {typingUsers.size > 0 && (
+          <div className="flex items-center gap-2 p-2 px-4 rounded-xl max-w-fit" style={{ background: theme.surface, color: theme.textMuted }}>
+            <div className="flex gap-1 mr-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <span className="text-xs font-medium">
+              {Array.from(typingUsers)
+                .map(id => conversation?.members.find((m: any) => m.userId === id)?.user.username)
+                .filter(Boolean)
+                .join(', ')} is typing...
+            </span>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -560,7 +615,7 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
             <input
               type="text"
               value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={handleInputChange}
               disabled={!activeSessionKey}
               placeholder={
                 !isConnected
