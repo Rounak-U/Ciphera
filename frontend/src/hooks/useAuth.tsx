@@ -2,13 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-import { generateRSAKeyPair, exportPublicKey, importPublicKey, exportPrivateKey, importPrivateKey } from '@securechat/crypto';
+import { generateRSAKeyPair, exportPublicKey, importPublicKey, exportPrivateKey, importPrivateKey, generateSigningKeyPair, exportSigningPublicKey, exportSigningPrivateKey, importSigningPrivateKey } from '@securechat/crypto';
 
 interface User {
   id: string;
   username: string;
   email: string;
   publicKey: string;
+  publicSigningKey?: string;
 }
 
 interface AuthContextType {
@@ -20,6 +21,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   getPrivateKey: () => Promise<CryptoKey | null>;
+  getPrivateSigningKey: () => Promise<CryptoKey | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +35,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [privateKey, setPrivateKey] = useState<CryptoKey | null>(null);
+  const [privateSigningKey, setPrivateSigningKey] = useState<CryptoKey | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -60,9 +63,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error("Failed to restore private key from local storage", e);
         }
       }
+      
+      const storedSignKey = localStorage.getItem(`securechat_signing_key_${userObj.id}`);
+      if (storedSignKey) {
+        try {
+          const sKey = await importSigningPrivateKey(storedSignKey);
+          setPrivateSigningKey(sKey);
+        } catch (e) {
+          console.error("Failed to restore signing key from local storage", e);
+        }
+      }
     } catch (error) {
       setUser(null);
       setPrivateKey(null);
+      setPrivateSigningKey(null);
     } finally {
       setLoading(false);
     }
@@ -73,47 +87,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userObj = res.data.user;
     
     const storedKey = localStorage.getItem(`securechat_private_key_${userObj.id}`);
-    if (storedKey) {
+    const storedSignKey = localStorage.getItem(`securechat_signing_key_${userObj.id}`);
+    
+    if (storedKey && storedSignKey) {
       try {
         const key = await importPrivateKey(storedKey);
+        const sKey = await importSigningPrivateKey(storedSignKey);
         setPrivateKey(key);
+        setPrivateSigningKey(sKey);
         setUser(userObj);
         return;
       } catch (e) {
-        console.error("Corrupted local key, generating new one");
+        console.error("Corrupted local keys, generating new ones");
       }
     }
 
-    console.warn("Generating new RSA key pair for new session. Past messages may be unreadable.");
+    console.warn("Generating new RSA and ECDSA key pairs for new session. Past messages may be unreadable.");
     const keyPair = await generateRSAKeyPair();
+    const signKeyPair = await generateSigningKeyPair();
+    
     setPrivateKey(keyPair.privateKey);
+    setPrivateSigningKey(signKeyPair.privateKey);
     
     const exportedPriv = await exportPrivateKey(keyPair.privateKey);
+    const exportedSignPriv = await exportSigningPrivateKey(signKeyPair.privateKey);
+    
     localStorage.setItem(`securechat_private_key_${userObj.id}`, exportedPriv);
+    localStorage.setItem(`securechat_signing_key_${userObj.id}`, exportedSignPriv);
     
     const publicKeyPem = await exportPublicKey(keyPair.publicKey);
-    const updateRes = await axios.post(`${API_URL}/auth/login`, { email, password, publicKey: publicKeyPem });
+    const publicSigningKeyPem = await exportSigningPublicKey(signKeyPair.publicKey);
+    
+    const updateRes = await axios.post(`${API_URL}/auth/login`, { 
+      email, 
+      password, 
+      publicKey: publicKeyPem,
+      publicSigningKey: publicSigningKeyPem 
+    });
     setUser(updateRes.data.user);
   };
 
   const register = async (username: string, email: string, password: string) => {
-    // Generate RSA key pair on client side
+    // Generate RSA and ECDSA key pairs on client side
     const keyPair = await generateRSAKeyPair();
-    const publicKeyPem = await exportPublicKey(keyPair.publicKey);
+    const signKeyPair = await generateSigningKeyPair();
     
-    // Keep private key in memory
+    const publicKeyPem = await exportPublicKey(keyPair.publicKey);
+    const publicSigningKeyPem = await exportSigningPublicKey(signKeyPair.publicKey);
+    
+    // Keep private keys in memory
     setPrivateKey(keyPair.privateKey);
+    setPrivateSigningKey(signKeyPair.privateKey);
+    
     const exportedPriv = await exportPrivateKey(keyPair.privateKey);
+    const exportedSignPriv = await exportSigningPrivateKey(signKeyPair.privateKey);
 
     const res = await axios.post(`${API_URL}/auth/register`, {
       username,
       email,
       password,
       publicKey: publicKeyPem,
+      publicSigningKey: publicSigningKeyPem,
     });
     
     const userObj = res.data.user;
     localStorage.setItem(`securechat_private_key_${userObj.id}`, exportedPriv);
+    localStorage.setItem(`securechat_signing_key_${userObj.id}`, exportedSignPriv);
     setUser(userObj);
   };
 
@@ -126,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setUser(null);
     setPrivateKey(null);
+    setPrivateSigningKey(null);
     // Deliberately NOT removing from localStorage so users don't permanently lose their keys when logging out.
   };
 
@@ -147,8 +187,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return privateKey;
   };
 
+  const getPrivateSigningKey = async (): Promise<CryptoKey | null> => {
+    return privateSigningKey;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, checkAuth, login, register, logout, deleteAccount, getPrivateKey }}>
+    <AuthContext.Provider value={{ user, loading, checkAuth, login, register, logout, deleteAccount, getPrivateKey, getPrivateSigningKey }}>
       {children}
     </AuthContext.Provider>
   );

@@ -10,6 +10,9 @@ import {
   decryptSessionKey,
   generateSessionKey,
   encryptSessionKey,
+  signData,
+  verifySignature,
+  importSigningPublicKey
 } from '@securechat/crypto';
 import { Send, Lock, ShieldAlert, Check, CheckCheck, KeyRound, Smile, ArrowLeft } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
@@ -56,7 +59,7 @@ const playSound = (type: 'send' | 'receive') => {
 };
 
 export default function ChatWindow({ conversationId, onBack, chatTheme = 'default' }: { conversationId: string; onBack?: () => void; chatTheme?: 'default' | 'ruixen' | 'sunset' }) {
-  const { user, getPrivateKey } = useAuth();
+  const { user, getPrivateKey, getPrivateSigningKey } = useAuth();
   const { socket, isConnected } = useSocket();
 
   const [conversation, setConversation] = useState<any>(null);
@@ -272,8 +275,19 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
     }
 
     try {
+      if (msg.signature) {
+        const sender = conversation?.members.find((m: any) => m.userId === msg.senderId)?.user;
+        if (sender && sender.publicSigningKey) {
+          const publicSigningKey = await importSigningPublicKey(sender.publicSigningKey);
+          const isValid = await verifySignature(msg.signature, msg.ciphertext + msg.nonce, publicSigningKey);
+          if (!isValid) {
+            throw new Error("Invalid digital signature: Sender identity could not be verified.");
+          }
+        }
+      }
+
       const plaintext = await decryptMessage(msg.ciphertext, msg.nonce, key);
-      return { ...msg, decryptedText: plaintext, isDecrypted: true };
+      return { ...msg, decryptedText: plaintext, isDecrypted: true, isSigned: !!msg.signature };
     } catch (error: any) {
       setDecryptionErrors((prev) => ({ ...prev, [msg.id]: error.message }));
       return {
@@ -361,10 +375,17 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
     try {
       const { ciphertext, nonce } = await encryptMessage(plaintext, activeSessionKey);
 
+      const privateSigningKey = await getPrivateSigningKey();
+      let signature = null;
+      if (privateSigningKey) {
+        signature = await signData(ciphertext + nonce, privateSigningKey);
+      }
+
       socket.emit('send_message', {
         conversationId,
         ciphertext,
         nonce,
+        signature,
         keyVersion: activeKeyVersion,
       });
 
@@ -382,10 +403,17 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
     try {
       const { ciphertext, nonce } = await encryptMessage(value, activeSessionKey);
 
+      const privateSigningKey = await getPrivateSigningKey();
+      let signature = null;
+      if (privateSigningKey) {
+        signature = await signData(ciphertext + nonce, privateSigningKey);
+      }
+
       socket.emit('send_message', {
         conversationId,
         ciphertext,
         nonce,
+        signature,
         keyVersion: activeKeyVersion,
       });
 
@@ -545,6 +573,11 @@ export default function ChatWindow({ conversationId, onBack, chatTheme = 'defaul
                       className="mt-1 flex items-center justify-end gap-1 text-[10px]"
                       style={{ color: isMe ? 'rgba(0,0,0,0.5)' : theme.textDim }}
                     >
+                      {msg.isSigned && (
+                        <span title="Digitally Signed" style={{ marginRight: 2 }}>
+                          <Check size={10} style={{ color: isMe ? 'rgba(0,0,0,0.7)' : theme.accent }} />
+                        </span>
+                      )}
                       {msg.isDecrypted && isMe && (
                         msg.readAt ? (
                           <CheckCheck size={13} />

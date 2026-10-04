@@ -7,10 +7,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretfallback_pleasechange';
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, publicKey } = req.body;
+    const { username, email, password, publicKey, publicSigningKey } = req.body;
     
-    if (!username || !email || !password || !publicKey) {
-      res.status(400).json({ error: 'All fields are required (username, email, password, publicKey)' });
+    if (!username || !email || !password || !publicKey || !publicSigningKey) {
+      res.status(400).json({ error: 'All fields are required (username, email, password, publicKey, publicSigningKey)' });
       return;
     }
 
@@ -38,7 +38,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         username,
         email,
         passwordHash,
-        publicKey
+        publicKey,
+        publicSigningKey
       }
     });
 
@@ -58,7 +59,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         username: user.username,
         email: user.email,
-        publicKey: user.publicKey
+        publicKey: user.publicKey,
+        publicSigningKey: user.publicSigningKey
       }
     });
   } catch (error) {
@@ -90,15 +92,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { publicKey } = req.body;
+    const { publicKey, publicSigningKey } = req.body;
     let updatedPublicKey = user.publicKey;
+    let updatedPublicSigningKey = user.publicSigningKey;
 
-    if (publicKey && publicKey !== user.publicKey) {
+    if ((publicKey && publicKey !== user.publicKey) || (publicSigningKey && publicSigningKey !== user.publicSigningKey)) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { publicKey }
+        data: { 
+          ...(publicKey && { publicKey }),
+          ...(publicSigningKey && { publicSigningKey })
+        }
       });
-      updatedPublicKey = publicKey;
+      if (publicKey) updatedPublicKey = publicKey;
+      if (publicSigningKey) updatedPublicSigningKey = publicSigningKey;
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
@@ -117,7 +124,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         username: user.username,
         email: user.email,
-        publicKey: updatedPublicKey
+        publicKey: updatedPublicKey,
+        publicSigningKey: updatedPublicSigningKey
       }
     });
   } catch (error) {
@@ -161,7 +169,8 @@ export const me = async (req: Request, res: Response): Promise<void> => {
         id: user.id,
         username: user.username,
         email: user.email,
-        publicKey: user.publicKey
+        publicKey: user.publicKey,
+        publicSigningKey: user.publicSigningKey
       }
     });
   } catch (error) {

@@ -68,7 +68,7 @@ export const setupSocketHandlers = (io: Server) => {
 
     socket.on('send_message', async (data) => {
       try {
-        const { conversationId, ciphertext, nonce, authTag, keyVersion } = data;
+        const { conversationId, ciphertext, nonce, authTag, signature, keyVersion } = data;
         
         // Save to DB and bump conversation updatedAt
         const [message] = await prisma.$transaction([
@@ -79,6 +79,7 @@ export const setupSocketHandlers = (io: Server) => {
               ciphertext,
               nonce,
               authTag: authTag || "",
+              signature: signature || null,
               keyVersion
             },
             include: {
