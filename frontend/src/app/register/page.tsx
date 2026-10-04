@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { User, Mail, Lock } from 'lucide-react';
@@ -17,8 +17,14 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isGeneratingKeys, setIsGeneratingKeys] = useState(false);
-  const { register } = useAuth();
+  const { register, user, loading } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, loading, router]);
 
   const getPasswordStrength = (pass: string) => {
     let strength = 0;
