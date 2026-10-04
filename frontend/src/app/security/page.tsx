@@ -58,8 +58,10 @@ export default function SecurityLab() {
       setTamperResult('Running…');
       const sessionKey = await generateSessionKey();
       const { ciphertext, nonce } = await encryptMessage('Secret Data', sessionKey);
-      const tamperedCiphertext =
-        String.fromCharCode(ciphertext.charCodeAt(0) ^ 1) + ciphertext.slice(1);
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      const firstChar = ciphertext[0];
+      const newChar = chars[(chars.indexOf(firstChar) + 1) % 64];
+      const tamperedCiphertext = newChar + ciphertext.slice(1);
 
       try {
         await decryptMessage(tamperedCiphertext, nonce, sessionKey);
