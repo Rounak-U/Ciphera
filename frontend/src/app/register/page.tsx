@@ -26,6 +26,10 @@ export default function Register() {
     }
   }, [user, loading, router]);
 
+  if (loading || user) {
+    return null;
+  }
+
   const getPasswordStrength = (pass: string) => {
     let strength = 0;
     if (pass.length > 7) strength += 1;

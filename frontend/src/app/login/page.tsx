@@ -25,6 +25,10 @@ export default function Login() {
     }
   }, [user, loading, router]);
 
+  if (loading || user) {
+    return null;
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
